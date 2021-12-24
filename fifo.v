@@ -37,7 +37,6 @@ reg [2:0] next_read_address;
 
 reg temp_full;
 reg temp_empty;
-reg goda;
 
 assign write_enable = WREN & (!full);
 assign read_enable  = RDEN & (!empty);
@@ -79,13 +78,11 @@ always @(posedge clk or negedge rst)
                 temp_empty    <= 1'b0;
                 full          <= 1'b0;
                 empty         <= 1'b1;   // fifo is empty by default
-                goda <= 1'b0;
             end 
         else 
             begin
                 case ({WREN, RDEN})
                     2'b10: begin
-                    goda <= 1'b1;
                             if(!full)
                                 begin
                                     empty         <= 1'b0;
