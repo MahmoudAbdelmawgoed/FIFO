@@ -38,6 +38,7 @@ reg [2:0] next_read_address;
 reg temp_full;
 reg temp_empty;
 
+
 assign write_enable = WREN & (!full);
 assign read_enable  = RDEN & (!empty);
 
@@ -75,7 +76,7 @@ always @(posedge clk or negedge rst)
                 write_address <= 3'd0;
                 read_address  <= 3'd0;
                 temp_full     <= 1'b0;
-                temp_empty    <= 1'b0;
+                temp_empty    <= 1'b1;
                 full          <= 1'b0;
                 empty         <= 1'b1;   // fifo is empty by default
             end 
