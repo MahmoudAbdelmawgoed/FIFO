@@ -53,15 +53,29 @@ module tb;
 
 	property p2;
     @(posedge clk) disable iff (!rst)
-    ((WREN) |=> s_eventually (full));
+    ((empty && WREN) |=> (!empty));
   endproperty
   assert property (p2);
 
 	property p3;
     @(posedge clk) disable iff (!rst)
-    ((RDEN) |=> s_eventually (empty));
+    ((full && RDEN) |=> (!full));
   endproperty
   assert property (p3);
+
+	property p4;
+    @(posedge clk) disable iff (!rst)
+    ((WREN) |=> s_eventually (full));
+  endproperty
+  assert property (p4);
+
+	property p5;
+    @(posedge clk) disable iff (!rst)
+    ((RDEN) |=> s_eventually (empty));
+  endproperty
+  assert property (p5);
+
+
 //	assert property (s_ab);
 endmodule
 
