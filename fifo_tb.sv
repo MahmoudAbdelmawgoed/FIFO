@@ -8,7 +8,11 @@ module tb;
 	reg [7:0] data_in;
 	reg full;
 	reg empty;
+	reg [2:0] next_write_address;
+	reg [2:0] next_read_address;
 	wire [7:0] data_out;
+	wire [2:0] read_address;
+	wire [2:0] write_address;
 
 
  fifo fifo_si(  .clk(clk),
@@ -18,13 +22,25 @@ module tb;
                 .data_in(data_in),
                 .full(full),
                 .empty(empty),
-                .data_out(data_out)
+                .data_out(data_out),
+                .read_address(read_address),
+                .write_address(write_address)
     );
 
 	always begin 
 	#5
 	clk = ~clk;
 	end
+
+	always_ff @(posedge clk)
+		begin
+			next_write_address <= write_address;
+		end
+
+	always_ff @(posedge clk)
+		begin
+			next_read_address <= read_address;
+		end
 
 
 	initial
@@ -71,27 +87,50 @@ module tb;
 			end
 
  
-	property not_empty_after_write;
+
+	property not_empty_after_write; // when fifo is empty, so write then it won't be empty anymore
     @(posedge clk) disable iff (!rst) ((empty && WREN) |=> (!empty));
   endproperty
   assert property (not_empty_after_write);
 
-	property not_full_after_read;
+	property not_full_after_read; // when fifo is full, so read then it won't be full anymore
     @(posedge clk) disable iff (!rst) ((full && RDEN) |=> (!full));
   endproperty
   assert property (not_full_after_read);
 
-	property not_full_empty;
-    @(posedge clk) disable iff (!rst) ((WREN && RDEN) |-> s_eventually(!full && !empty));
+	property WREN_RDEN; // read enable and write enable are both on
+    @(posedge clk) disable iff (!rst) ((WREN && RDEN) |=> (!full && !empty));
   endproperty
-  assert property (not_full_empty);
+  assert property (WREN_RDEN);
+
+  property WREN_RDEN_empty; // read enable and write enable are both on and fifo is empty, so wrie_ptr will runover read_ptr
+    @(posedge clk) disable iff (!rst) (((WREN && RDEN) && empty) |=> (write_address == read_address + 1 )); // read + 1, as write_ptr runover read_ptr 
+  endproperty
+  assert property (WREN_RDEN_empty);
+
+	property WREN_RDEN_full; // read enable and write enable are both on and fifo is empty, so wrie_ptr will runover read_ptr
+    @(posedge clk) disable iff (!rst) (((WREN && RDEN) && full) |=> (read_address == write_address + 1 )); // write + 1, as read_ptr runover write_ptr
+  endproperty
+  assert property (WREN_RDEN_full);
 
 	property valid_output;
-    @(posedge clk) disable iff (!rst) ((RDEN && !empty) |=> (!$isunknown(data_out)));   // valid data, this assertion is to check the behavior of teh two port mem
-  endproperty																																	// when getting new data to be stored in the mem, the output from the mem must be valid
-  assert property (valid_output);																							// if the data is valid
-																		// (&& !empty), this is for the first situation of teh fifo, when the fifo is empty, so we will not read the initial of the data_out which is XXXX
-																		// maily here we are checking if there is any problem in the two port mem when reading from it
+    @(posedge clk) disable iff (!rst) ((RDEN && !empty) |=> (!$isunknown(data_out)));   // valid data, this assertion is to check the behavior of the two port mem
+  endproperty										          // when getting new data to be stored in the mem, the output from the mem must be valid
+  assert property (valid_output);					// if the data is valid
+	// (&& !empty), this is for the first situation of teh fifo, when the fifo is empty, so we will not read the initial of the data_out which is XXXX
+																// mainly here we are checking if there is any problem in the two port mem when reading from it
+																// if empty and RDEN = 1, so read_ptr shouldn't move 
+
+	property empty_and_RDEN; // if empty and RDEN = 1, so read_ptr shouldn't move
+    @(posedge clk) disable iff (!rst) ((empty && (RDEN)) |=> (read_address == next_read_address));
+  endproperty
+  assert property (empty_and_RDEN);
+
+	property full_and_WREN; // if full and WREN = 1, so write_ptr shouldn't move 
+    @(posedge clk) disable iff (!rst) ((full && (WREN)) |=> (write_address == next_write_address ));
+  endproperty
+  assert property (full_and_WREN);
+
 	property eventually_full;																												
     @(posedge clk) disable iff (!rst) ((WREN) |=> s_eventually (full));
   endproperty
